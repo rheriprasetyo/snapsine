@@ -145,15 +145,36 @@ app.whenReady().then(() => {
   // Set up permissions check handler
   session.defaultSession.setPermissionCheckHandler((webContents, permission, requestingOrigin, details) => {
     console.log('Permission check:', permission, requestingOrigin);
-    return true; // Allow all permissions
+    // Allow all permissions for screen recording
+    if (permission === 'media' || permission === 'camera' || permission === 'microphone' || permission === 'screen') {
+      return true;
+    }
+    return true; // Allow all permissions for development
   });
 
   // Enable media stream APIs
   session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
-    console.log('Display media request');
-    // Automatically approve display media requests
-    desktopCapturer.getSources({ types: ['window', 'screen'] }).then((sources) => {
-      callback({ video: sources[0], audio: 'loopback' });
+    console.log('Display media request received');
+    
+    // Get all available sources
+    desktopCapturer.getSources({ 
+      types: ['window', 'screen'],
+      thumbnailSize: { width: 640, height: 360 }
+    }).then((sources) => {
+      console.log('Available sources for capture:', sources.map(s => ({ id: s.id, name: s.name })));
+      
+      // Return the first window source
+      const windowSource = sources.find(s => s.id.includes('window:'));
+      if (windowSource) {
+        console.log('Using window source for capture:', windowSource.name);
+        callback({ video: windowSource });
+      } else {
+        console.log('No window source found, using first available source');
+        callback({ video: sources[0] });
+      }
+    }).catch(error => {
+      console.error('Error getting sources:', error);
+      callback({ video: null });
     });
   });
 
@@ -180,9 +201,18 @@ app.on('window-all-closed', () => {
 ipcMain.handle('get-desktop-sources', async () => {
   try {
     const sources = await desktopCapturer.getSources({
-      types: ['window', 'screen'],
-      thumbnailSize: { width: 150, height: 150 }
+      types: ['window', 'screen', 'browser-window'],
+      thumbnailSize: { width: 640, height: 360 },
+      fetchWindowIcons: true
     });
+    
+    // Log the sources for debugging
+    console.log('Available sources:', sources.map(s => ({ 
+      name: s.name, 
+      id: s.id, 
+      type: s.display_id 
+    })));
+    
     return sources;
   } catch (error) {
     console.error('Error getting desktop sources:', error);
@@ -454,6 +484,46 @@ ipcMain.handle('save-settings', async (event, settings) => {
 
 ipcMain.handle('get-settings', async () => {
   return store.get('settings', {});
+});
+
+ipcMain.handle('get-source-by-id', async (event, sourceId) => {
+  try {
+    console.log('Getting source by ID:', sourceId);
+    
+    const sources = await desktopCapturer.getSources({
+      types: ['window', 'screen'],
+      thumbnailSize: { width: 640, height: 360 }
+    });
+    
+    console.log('Available sources:', sources.map(s => ({
+      id: s.id,
+      name: s.name,
+      display_id: s.display_id
+    })));
+    
+    const source = sources.find(s => s.id === sourceId);
+    if (!source) {
+      console.error('Source not found:', sourceId);
+      throw new Error(`Source with ID ${sourceId} not found`);
+    }
+    
+    // Verify it's not the Snapsine window
+    if (source.name.includes('Snapsine')) {
+      console.error('Attempted to capture Snapsine window');
+      throw new Error('Cannot capture the Snapsine window itself');
+    }
+    
+    console.log('Found source:', {
+      id: source.id,
+      name: source.name,
+      display_id: source.display_id
+    });
+    
+    return source;
+  } catch (error) {
+    console.error('Error getting source by ID:', error);
+    throw error;
+  }
 });
 
 // Create application menu

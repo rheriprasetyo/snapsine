@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Screen capture
   getDesktopSources: () => ipcRenderer.invoke('get-desktop-sources'),
   getUserMediaAccess: () => ipcRenderer.invoke('get-user-media-access'),
+  getSourceById: (sourceId) => ipcRenderer.invoke('get-source-by-id', sourceId),
   
   // Recording controls
   startRecording: (options) => ipcRenderer.invoke('start-recording', options),

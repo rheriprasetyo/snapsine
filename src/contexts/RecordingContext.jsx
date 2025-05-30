@@ -90,30 +90,62 @@ export const RecordingProvider = ({ children }) => {
       }
       
       console.log('Starting recording with source:', state.selectedSource.name);
+      console.log('Selected source ID:', state.selectedSource.id);
       
       try {
-        // Use only getDisplayMedia for modern, reliable screen capture
-        console.log('Getting screen capture stream using getDisplayMedia...');
-        const stream = await navigator.mediaDevices.getDisplayMedia({
+        // Get the source details from Electron
+        const source = await window.electronAPI.getSourceById(state.selectedSource.id);
+        console.log('Got source details:', {
+          id: source.id,
+          name: source.name,
+          display_id: source.display_id
+        });
+
+        // Verify source ID matches
+        if (source.id !== state.selectedSource.id) {
+          console.warn('⚠️ Source ID mismatch:', {
+            selected: state.selectedSource.id,
+            retrieved: source.id
+          });
+        }
+
+        // Verify it's not the Snapsine window
+        if (source.name.includes('Snapsine')) {
+          throw new Error('Cannot record the Snapsine window itself');
+        }
+
+        // Use getUserMedia with the source ID
+        console.log('Getting screen capture stream using getUserMedia with source ID:', source.id);
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
           video: {
-            width: { ideal: 1920, max: 1920 },
-            height: { ideal: 1080, max: 1080 },
-            frameRate: { ideal: 30, max: 60 }
-          },
-          audio: {
-            echoCancellation: false,
-            noiseSuppression: false,
-            sampleRate: 44100
+            mandatory: {
+              chromeMediaSource: 'desktop',
+              chromeMediaSourceId: source.id,
+              minWidth: 1280,
+              maxWidth: 1920,
+              minHeight: 720,
+              maxHeight: 1080,
+              maxFrameRate: 30
+            }
           }
         });
-        console.log('✅ getDisplayMedia successful');
-        console.log('Stream tracks:', stream.getTracks().map(t => ({ 
-          kind: t.kind, 
-          label: t.label,
-          enabled: t.enabled,
-          readyState: t.readyState
-        })));
 
+        // Log video track details
+        const videoTrack = stream.getVideoTracks()[0];
+        if (!videoTrack) {
+          throw new Error('No video track available in the stream');
+        }
+
+        console.log('✅ Stream obtained successfully');
+        console.log('Video track settings:', {
+          ...videoTrack.getSettings(),
+          label: videoTrack.label,
+          enabled: videoTrack.enabled,
+          muted: videoTrack.muted,
+          readyState: videoTrack.readyState
+        });
+        
         streamRef.current = stream;
         recordedChunksRef.current = [];
 
@@ -121,7 +153,7 @@ export const RecordingProvider = ({ children }) => {
         let recordingInfo = null;
         if (window.electronAPI) {
           const result = await window.electronAPI.startRecording({
-            sourceId: state.selectedSource.id,
+            sourceId: source.id,
             settings: state.settings
           });
           recordingInfo = result;
