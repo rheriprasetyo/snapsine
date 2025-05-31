@@ -1,61 +1,97 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 
 const PreviewArea = ({ selectedSource, isRecording }) => {
+  const videoRef = useRef(null);
+
+  useEffect(() => {
+    let stream = null;
+
+    const startPreview = async () => {
+      if (!selectedSource || !videoRef.current) return;
+
+      try {
+        // Stop any existing stream
+        if (stream) {
+          stream.getTracks().forEach(track => track.stop());
+        }
+
+        // Get live preview stream
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: {
+            mandatory: {
+              chromeMediaSource: 'desktop',
+              chromeMediaSourceId: selectedSource.id,
+              minWidth: 1280,
+              maxWidth: 1920,
+              minHeight: 720,
+              maxHeight: 1080,
+              minFrameRate: 30
+            }
+          }
+        });
+
+        // Set video source
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      } catch (error) {
+        console.error('Error starting preview:', error);
+      }
+    };
+
+    startPreview();
+
+    // Cleanup
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [selectedSource]);
+
   return (
-    <div className="flex-1 flex items-center justify-center" style={{
+    <div className="flex-1 flex items-center justify-center p-4" style={{
       flex: 1,
       display: 'flex',
       alignItems: 'center',
-      justifyContent: 'center'
+      justifyContent: 'center',
+      padding: '16px',
+      minHeight: 0 // Important for flex container
     }}>
       {selectedSource ? (
         <motion.div
-          className="relative w-full max-w-2xl aspect-video bg-black/20 rounded-lg border border-white/10 overflow-hidden"
+          className="relative w-full h-full bg-black/20 rounded-lg border border-white/10 overflow-hidden"
           style={{
             position: 'relative',
             width: '100%',
-            maxWidth: '640px',
-            aspectRatio: '16/9',
+            height: '100%',
             backgroundColor: 'rgba(0, 0, 0, 0.2)',
             borderRadius: '8px',
             border: '1px solid rgba(255, 255, 255, 0.1)',
-            overflow: 'hidden'
+            overflow: 'hidden',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
           }}
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5 }}
         >
-          {/* Preview Image */}
-          {selectedSource.thumbnail ? (
-            <img
-              src={selectedSource.thumbnail.toDataURL()}
-              alt={selectedSource.name}
-              className="w-full h-full object-cover"
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover'
-              }}
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center" style={{
+          {/* Live Preview */}
+          <video
+            ref={videoRef}
+            className="w-full h-full"
+            style={{
               width: '100%',
               height: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>
-              <div className="text-center" style={{ textAlign: 'center' }}>
-                <div className="text-4xl mb-3" style={{ fontSize: '48px', marginBottom: '12px' }}>
-                  {selectedSource.name.toLowerCase().includes('screen') ? '🖥️' : '🪟'}
-                </div>
-                <p className="text-white/60 text-base" style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '16px' }}>
-                  {selectedSource.name}
-                </p>
-              </div>
-            </div>
-          )}
+              objectFit: 'contain',
+              backgroundColor: 'black'
+            }}
+            autoPlay
+            muted
+            playsInline
+          />
 
           {/* Recording Overlay */}
           {isRecording && (

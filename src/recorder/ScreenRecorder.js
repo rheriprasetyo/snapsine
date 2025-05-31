@@ -148,9 +148,15 @@ class ScreenRecorder {
   async getScreenStream(config) {
     const constraints = {
       video: {
-        cursor: config.includeCursor ? 'always' : 'never',
-        frameRate: config.framerate,
-        ...this.getVideoConstraints(config.quality)
+        mandatory: {
+          chromeMediaSource: 'desktop',
+          chromeMediaSourceId: config.sourceId,
+          minWidth: 1280,
+          maxWidth: 1920,
+          minHeight: 720,
+          maxHeight: 1080,
+          minFrameRate: config.framerate || 30
+        }
       },
       audio: false // We'll handle audio separately for better control
     };
@@ -162,7 +168,7 @@ class ScreenRecorder {
       console.log('🖼️ Region selection not yet implemented, using fullscreen');
     }
 
-    return await navigator.mediaDevices.getDisplayMedia(constraints);
+    return await navigator.mediaDevices.getUserMedia(constraints);
   }
 
   async getAudioStreams(config) {

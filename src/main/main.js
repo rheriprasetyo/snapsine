@@ -13,6 +13,8 @@ let isRecording = false;
 // Create recordings directory with better error handling
 const recordingsDir = path.join(os.homedir(), 'Desktop', 'snapsine');
 
+const backgroundsDir = path.join(__dirname, '../../backgrounds');
+
 const ensureRecordingsDirectory = () => {
   try {
     if (!fs.existsSync(recordingsDir)) {
@@ -616,4 +618,12 @@ function createMenu() {
 
   const menu = Menu.buildFromTemplate(template);
   Menu.setApplicationMenu(menu);
-} 
+}
+
+ipcMain.handle('get-background-images', async () => {
+  if (!fs.existsSync(backgroundsDir)) fs.mkdirSync(backgroundsDir, { recursive: true });
+  const files = fs.readdirSync(backgroundsDir);
+  return files
+    .filter(file => /\.(jpe?g|png|gif|webp)$/i.test(file))
+    .map(file => path.join(backgroundsDir, file));
+}); 

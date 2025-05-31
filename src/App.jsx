@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RecordingProvider, useRecording } from './contexts/RecordingContext';
 import Header from './components/Header';
@@ -6,12 +6,21 @@ import RecordingPanel from './components/RecordingPanel';
 import SourceSelector from './components/SourceSelector';
 import RecordingsPanel from './components/RecordingsPanel';
 import PreviewArea from './components/PreviewArea';
+import VideoPlayer from './components/VideoPlayer';
 
 // Inner App component that has access to RecordingContext
 const AppContent = () => {
   const { state, actions } = useRecording();
   const [activeTab, setActiveTab] = useState('record');
   const [selectedRecording, setSelectedRecording] = useState(null);
+  const [backgroundType, setBackgroundType] = useState('color');
+  const [backgroundColor, setBackgroundColor] = useState('#000000');
+  const [backgroundGradient, setBackgroundGradient] = useState('linear-gradient(45deg, #1a1a1a, #4a4a4a)');
+  const [backgroundImage, setBackgroundImage] = useState(null);
+  const [backgroundOpacity, setBackgroundOpacity] = useState(1);
+  const [backgroundBlur, setBackgroundBlur] = useState(0);
+  const [padding, setPadding] = useState(32);
+  const [folderImages, setFolderImages] = useState([]);
   
   // Settings state
   const [settings, setSettings] = useState({
@@ -26,6 +35,31 @@ const AppContent = () => {
     autoZoom: false,
     outputPath: 'Desktop/Recordings'
   });
+
+  const videoRef = useRef(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [volume, setVolume] = useState(1);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const DEFAULT_BG_IMAGE = 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80'; // Replace with your preferred default image URL
+
+  const PUBLIC_BG_IMAGES = [
+    '/backgrounds/wallpaper'
+  ];
+
+  // Wallpaper filenames (add your actual filenames here)
+  const WALLPAPER_IMAGES = [
+    '/backgrounds/wallpapers/wallpaper1.png',
+    '/backgrounds/wallpapers/wallpaper2.png',
+    '/backgrounds/wallpapers/wallpaper3.png',
+    '/backgrounds/wallpapers/wallpaper4.png',
+
+  ];
+
+  const [backgroundTab, setBackgroundTab] = useState('wallpaper');
 
   const updateSetting = (key, value) => {
     setSettings(prev => ({ ...prev, [key]: value }));
@@ -94,263 +128,183 @@ const AppContent = () => {
     };
   }, [actions]);
 
+  useEffect(() => {
+    if (window.electronAPI?.getBackgroundImages) {
+      window.electronAPI.getBackgroundImages().then(setFolderImages);
+    }
+  }, []);
+
+  // Playback control handlers
+  const handlePlayPause = () => {
+    if (videoRef.current) {
+      if (isPlaying) {
+        videoRef.current.pause();
+      } else {
+        videoRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
+  };
+
+  const handleTimeUpdate = () => {
+    if (videoRef.current) {
+      setCurrentTime(videoRef.current.currentTime);
+    }
+  };
+
+  const handleLoadedMetadata = () => {
+    if (videoRef.current) {
+      setDuration(videoRef.current.duration);
+      setCurrentTime(videoRef.current.currentTime);
+    }
+  };
+
+  const handleSeek = (e) => {
+    const seekBar = e.target;
+    const rect = seekBar.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const percent = clickX / rect.width;
+    const seekTime = percent * duration;
+    if (videoRef.current) {
+      videoRef.current.currentTime = seekTime;
+      setCurrentTime(seekTime);
+    }
+  };
+
+  const handleVolumeChange = (e) => {
+    const newVolume = parseFloat(e.target.value);
+    setVolume(newVolume);
+    setIsMuted(newVolume === 0);
+    if (videoRef.current) {
+      videoRef.current.volume = newVolume;
+      videoRef.current.muted = newVolume === 0;
+    }
+  };
+
+  const toggleMute = () => {
+    setIsMuted(!isMuted);
+    if (videoRef.current) {
+      videoRef.current.muted = !isMuted;
+    }
+  };
+
+  const toggleFullscreen = () => {
+    if (videoRef.current) {
+      if (!document.fullscreenElement) {
+        videoRef.current.requestFullscreen();
+        setIsFullscreen(true);
+      } else {
+        document.exitFullscreen();
+        setIsFullscreen(false);
+      }
+    }
+  };
+
+  const formatTime = (time) => {
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
   const tabs = [
     { id: 'record', label: 'Record', icon: '🎥' },
     { id: 'library', label: 'Library', icon: '📚' }
   ];
 
   return (
-    <div className="h-screen flex flex-col bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      {/* Header */}
-      <Header 
+    <div className="h-screen w-screen flex flex-col">
+      {/* Header with tab navigation */}
+      <Header
         isRecording={state.isRecording}
         activeTab={activeTab}
         onTabChange={setActiveTab}
         tabs={tabs}
       />
 
-      {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
-        {activeTab === 'record' ? (
-          <>
-            {/* Left Sidebar - Sources & Recording */}
-            <motion.div 
-              className="w-72 bg-white/5 backdrop-blur-sm border-r border-white/10 flex flex-col overflow-hidden"
-              initial={{ x: -288 }}
-              animate={{ x: 0 }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
-            >
-              <div className="p-4 border-b border-white/10 flex-shrink-0">
-                <h2 className="text-white text-lg font-semibold mb-2">Screen Source</h2>
-                <SourceSelector 
-                  selectedSource={state.selectedSource}
-                  onSourceSelect={actions.selectSource}
-                />
-              </div>
-              
-              <div className="flex-1 p-4 overflow-y-auto">
-                <RecordingPanel 
-                  isRecording={state.isRecording}
-                  isPaused={state.isPaused}
-                  recordingTime={state.recordingTime}
-                  selectedSource={state.selectedSource}
-                  onStartRecording={actions.startRecording}
-                  onStopRecording={actions.stopRecording}
-                  onPauseRecording={actions.pauseRecording}
-                />
-              </div>
-            </motion.div>
-
-            {/* Center Preview Area */}
-            <motion.div 
-              className="flex-1 p-6"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-            >
-              <PreviewArea 
+      {/* Main content area: conditional on activeTab */}
+      {activeTab === 'record' ? (
+        <div className="flex-1 flex overflow-hidden">
+          {/* Left Sidebar - Sources & Recording */}
+          <div className="w-72 bg-white/5 backdrop-blur-sm border-r border-white/10 flex flex-col overflow-hidden">
+            <div className="p-4 border-b border-white/10 flex-shrink-0">
+              <h2 className="text-white text-lg font-semibold mb-2">Screen Source</h2>
+              <SourceSelector
                 selectedSource={state.selectedSource}
+                onSourceSelect={actions.selectSource}
+              />
+            </div>
+            <div className="flex-1 p-4 overflow-y-auto">
+              <RecordingPanel
                 isRecording={state.isRecording}
                 isPaused={state.isPaused}
+                recordingTime={state.recordingTime}
+                selectedSource={state.selectedSource}
+                onStartRecording={actions.startRecording}
+                onStopRecording={actions.stopRecording}
+                onPauseRecording={actions.pauseRecording}
               />
-            </motion.div>
-
-            {/* Right Sidebar - Quick Settings */}
-            <motion.div 
-              className="w-72 bg-white/5 backdrop-blur-sm border-l border-white/10 flex flex-col overflow-hidden"
-              initial={{ x: 288 }}
-              animate={{ x: 0 }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
-            >
-              <div className="p-4 border-b border-white/10 flex-shrink-0">
-                <h2 className="text-white text-lg font-semibold">Quick Settings</h2>
-              </div>
-              
-              <div className="flex-1 overflow-y-auto p-4 space-y-6">
-                {/* Audio Settings */}
-                <div className="space-y-4">
-                  <h3 className="text-white text-sm font-medium border-b border-white/10 pb-2">🎵 Audio</h3>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-white/80 text-sm">System Audio</span>
-                      <button
-                        onClick={() => toggleSetting('includeAudio')}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                          settings.includeAudio ? 'bg-green-600' : 'bg-gray-600'
-                        }`}
-                      >
-                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          settings.includeAudio ? 'translate-x-6' : 'translate-x-1'
-                        }`} />
-                      </button>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-white/80 text-sm">Microphone</span>
-                      <button
-                        onClick={() => toggleSetting('includeMicrophone')}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                          settings.includeMicrophone ? 'bg-red-600' : 'bg-gray-600'
-                        }`}
-                      >
-                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          settings.includeMicrophone ? 'translate-x-6' : 'translate-x-1'
-                        }`} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Video Settings */}
-                <div className="space-y-4">
-                  <h3 className="text-white text-sm font-medium border-b border-white/10 pb-2">📹 Video</h3>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-white/80 text-sm">Webcam Overlay</span>
-                      <button
-                        onClick={() => toggleSetting('webcamEnabled')}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                          settings.webcamEnabled ? 'bg-blue-600' : 'bg-gray-600'
-                        }`}
-                      >
-                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          settings.webcamEnabled ? 'translate-x-6' : 'translate-x-1'
-                        }`} />
-                      </button>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-white/80 text-sm">Click Highlights</span>
-                      <button
-                        onClick={() => toggleSetting('clickHighlights')}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                          settings.clickHighlights ? 'bg-yellow-600' : 'bg-gray-600'
-                        }`}
-                      >
-                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          settings.clickHighlights ? 'translate-x-6' : 'translate-x-1'
-                        }`} />
-                      </button>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-white/80 text-sm">Auto Zoom</span>
-                      <button
-                        onClick={() => toggleSetting('autoZoom')}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                          settings.autoZoom ? 'bg-purple-600' : 'bg-gray-600'
-                        }`}
-                      >
-                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          settings.autoZoom ? 'translate-x-6' : 'translate-x-1'
-                        }`} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Quality Settings */}
-                <div className="space-y-4">
-                  <h3 className="text-white text-sm font-medium border-b border-white/10 pb-2">📺 Quality</h3>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="text-white/80 text-xs block mb-1">Resolution</label>
-                      <select 
-                        value={settings.videoQuality}
-                        onChange={(e) => updateSetting('videoQuality', e.target.value)}
-                        className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white text-sm"
-                      >
-                        <option value="720p">720p HD</option>
-                        <option value="1080p">1080p Full HD</option>
-                        <option value="1440p">1440p 2K</option>
-                        <option value="2160p">2160p 4K</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-white/80 text-xs block mb-1">Frame Rate</label>
-                      <select 
-                        value={settings.frameRate}
-                        onChange={(e) => updateSetting('frameRate', e.target.value)}
-                        className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white text-sm"
-                      >
-                        <option value="30">30 FPS</option>
-                        <option value="60">60 FPS</option>
-                        <option value="120">120 FPS</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Output Settings */}
-                <div className="space-y-4">
-                  <h3 className="text-white text-sm font-medium border-b border-white/10 pb-2">💾 Output</h3>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="text-white/80 text-xs block mb-1">Format</label>
-                      <select 
-                        value={settings.outputFormat}
-                        onChange={(e) => updateSetting('outputFormat', e.target.value)}
-                        className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white text-sm"
-                      >
-                        <option value="mp4">MP4</option>
-                        <option value="mov">MOV</option>
-                        <option value="avi">AVI</option>
-                        <option value="webm">WebM</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-white/80 text-xs block mb-1">Save Location</label>
-                      <div className="flex gap-2">
-                        <input 
-                          type="text"
-                          value={settings.outputPath}
-                          onChange={(e) => updateSetting('outputPath', e.target.value)}
-                          className="flex-1 bg-white/10 border border-white/20 rounded-lg px-2 py-1 text-white text-sm"
-                        />
-                        <button className="px-2 py-1 bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-600/30 rounded-lg text-sm">
-                          📁
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </>
-        ) : (
-          // Three-panel layout for recordings
-          <>
-            {/* Left Panel - Recordings List */}
-            <div className="w-72 bg-gray-800/50 border-r border-white/10 flex flex-col">
-              <div className="p-4 border-b border-white/10 flex-shrink-0">
-                <h2 className="text-white text-lg font-semibold">Recordings</h2>
-              </div>
-              
-              <div className="flex-1 overflow-y-auto">
-                <RecordingsPanel 
-                  selectedRecording={selectedRecording}
-                  onRecordingSelect={setSelectedRecording}
-                />
-              </div>
             </div>
-
-            {/* Center Panel - Video Player */}
-            <div className="flex-1 flex flex-col bg-black/20">
-              <div className="p-4 border-b border-white/10 flex-shrink-0">
-                <h3 className="text-white text-lg font-medium">
-                  {selectedRecording ? selectedRecording.name : 'Select a recording to preview'}
-                </h3>
-              </div>
-              
-              <div className="flex-1 flex items-center justify-center p-4">
+          </div>
+          {/* Center Preview Area */}
+          <div className="flex-1 p-6">
+            <PreviewArea
+              selectedSource={state.selectedSource}
+              isRecording={state.isRecording}
+              isPaused={state.isPaused}
+            />
+          </div>
+          {/* Right Sidebar - Quick Settings (optional, can be left empty or used for future settings) */}
+          <div className="w-72 bg-white/5 backdrop-blur-sm border-l border-white/10 flex flex-col overflow-hidden">
+            <div className="p-4 border-b border-white/10 flex-shrink-0">
+              <h2 className="text-white text-lg font-semibold">Quick Settings</h2>
+            </div>
+            {/* Add quick settings here if needed */}
+          </div>
+        </div>
+      ) : (
+        // Library tab (existing new layout)
+        <>
+          <div className="flex-1 grid grid-cols-[260px_1fr_320px] grid-rows-1 h-full">
+            {/* Left: Recordings List */}
+            <div className="bg-gray-900/90 border-r border-white/10 overflow-y-auto">
+              <RecordingsPanel
+                selectedRecording={selectedRecording}
+                onRecordingSelect={setSelectedRecording}
+              />
+            </div>
+            {/* Center: Video Area with background and padding */}
+            <div className="relative flex flex-col items-center justify-center bg-black/80">
+              <div className="flex items-center justify-center w-full h-full">
                 {selectedRecording ? (
-                  <div className="w-full h-full bg-black rounded-lg flex items-center justify-center">
-                    <div className="text-white/60 text-center">
-                      <div className="w-16 h-16 mx-auto mb-3 bg-white/10 rounded-full flex items-center justify-center">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M8 5v14l11-7z" fill="currentColor"/>
-                        </svg>
-                      </div>
-                      <p>Video Player</p>
-                      <p className="text-sm text-white/40">Coming Soon</p>
-                    </div>
+                  <div
+                    style={{
+                      maxWidth: '80vw',
+                      maxHeight: '60vh',
+                      width: '100%',
+                      height: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: `${padding}px`,
+                      background: backgroundType === 'color'
+                        ? backgroundColor
+                        : backgroundType === 'gradient'
+                        ? backgroundGradient
+                        : undefined,
+                      backgroundImage: (backgroundType === 'image' || backgroundType === 'wallpaper') && backgroundImage ? `url(${backgroundImage})` : undefined,
+                      backgroundSize: 'cover',
+                      backgroundRepeat: (backgroundType === 'image' || backgroundType === 'wallpaper') ? 'no-repeat' : undefined,
+                      backgroundPosition: 'center',
+                      opacity: backgroundOpacity,
+                      filter: `blur(${backgroundBlur}px)`
+                    }}
+                  >
+                    <VideoPlayer
+                      ref={videoRef}
+                      recording={selectedRecording}
+                      onLoadedMetadata={handleLoadedMetadata}
+                      onTimeUpdate={handleTimeUpdate}
+                    />
                   </div>
                 ) : (
                   <div className="text-white/40 text-center">
@@ -363,76 +317,258 @@ const AppContent = () => {
                     <p className="text-sm">Choose a recording from the left panel to preview and edit</p>
                   </div>
                 )}
-              </div>
-            </div>
-
-            {/* Right Panel - Editing Tools */}
-            <div className="w-72 bg-gray-800/50 border-l border-white/10 flex flex-col">
-              <div className="p-4 border-b border-white/10 flex-shrink-0">
-                <h2 className="text-white text-lg font-semibold">Editing</h2>
-              </div>
-              
-              <div className="flex-1 overflow-y-auto p-4">
-                {selectedRecording ? (
-                  <div className="space-y-6">
-                    {/* Smart Export */}
-                    <div>
-                      <h3 className="text-white text-sm font-medium mb-3">Smart Export</h3>
-                      <div className="space-y-3">
-                        <button className="w-full p-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 rounded-lg text-white text-sm font-medium transition-all">
-                          Export for Social Media
-                        </button>
-                        <button className="w-full p-2 bg-gray-600/30 hover:bg-gray-600/40 border border-gray-500/30 rounded-lg text-white text-sm transition-colors">
-                          Custom Export
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center text-white/40">
-                    <div className="w-16 h-16 mx-auto mb-3 bg-white/5 rounded-full flex items-center justify-center">
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" fill="currentColor"/>
-                      </svg>
-                    </div>
-                    <p className="text-sm">Select a recording to access editing tools</p>
+                {/* Credit text for default image */}
+                {backgroundType === 'image' && !backgroundImage && (
+                  <div style={{
+                    position: 'absolute',
+                    bottom: 16,
+                    right: 24,
+                    color: 'rgba(255,255,255,0.5)',
+                    fontSize: 12,
+                    background: 'rgba(0,0,0,0.2)',
+                    borderRadius: 6,
+                    padding: '2px 8px',
+                    pointerEvents: 'none',
+                    zIndex: 10
+                  }}>
+                    Image by <a href="https://raycast.com" target="_blank" rel="noopener noreferrer" style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'underline' }}>raycast.com</a>
                   </div>
                 )}
               </div>
             </div>
-          </>
-        )}
-      </div>
-
-      {/* Status Bar */}
-      <motion.div 
-        className="h-8 bg-black/20 backdrop-blur-sm border-t border-white/10 flex items-center justify-between px-4 text-xs text-white/70"
-        initial={{ y: 32 }}
-        animate={{ y: 0 }}
-        transition={{ duration: 0.5, delay: 0.3 }}
-      >
-        <div className="flex items-center gap-4">
-          <span>
-            {state.isRecording 
-              ? (state.isPaused ? 'Paused' : 'Recording') 
-              : 'Ready'
-            }
-          </span>
-          {state.selectedSource && (
-            <span>Source: {state.selectedSource.name}</span>
-          )}
-          {activeTab === 'library' && state.recordings.length > 0 && (
-            <span>{state.recordings.length} recording{state.recordings.length === 1 ? '' : 's'}</span>
-          )}
-          <span>Quality: {settings.videoQuality} • {settings.frameRate} FPS • {settings.outputFormat.toUpperCase()}</span>
-        </div>
-        <div className="flex items-center gap-4">
-          <span>F9: Start</span>
-          <span>F10: Stop</span>
-          <span>F11: Pause</span>
-          <span>Ctrl+O: Open Folder</span>
-        </div>
-      </motion.div>
+            {/* Right: Background Controls Sidebar */}
+            <div className="bg-black/90 border-l border-white/10 p-6 flex flex-col gap-6">
+              <div>
+                <label className="text-white text-sm block mb-2">Background</label>
+                <div className="flex gap-2 mb-4">
+                  <button
+                    className={`px-3 py-1 rounded-md text-sm font-medium ${backgroundTab === 'wallpaper' ? 'bg-purple-700 text-white' : 'bg-white/10 text-white/60 hover:bg-white/20'}`}
+                    onClick={() => setBackgroundTab('wallpaper')}
+                  >
+                    Wallpaper
+                  </button>
+                  <button
+                    className={`px-3 py-1 rounded-md text-sm font-medium ${backgroundTab === 'gradient' ? 'bg-purple-700 text-white' : 'bg-white/10 text-white/60 hover:bg-white/20'}`}
+                    onClick={() => setBackgroundTab('gradient')}
+                  >
+                    Gradient
+                  </button>
+                  <button
+                    className={`px-3 py-1 rounded-md text-sm font-medium ${backgroundTab === 'color' ? 'bg-purple-700 text-white' : 'bg-white/10 text-white/60 hover:bg-white/20'}`}
+                    onClick={() => setBackgroundTab('color')}
+                  >
+                    Color
+                  </button>
+                  <button
+                    className={`px-3 py-1 rounded-md text-sm font-medium ${backgroundTab === 'image' ? 'bg-purple-700 text-white' : 'bg-white/10 text-white/60 hover:bg-white/20'}`}
+                    onClick={() => setBackgroundTab('image')}
+                  >
+                    Image
+                  </button>
+                </div>
+                {/* Wallpaper Tab */}
+                {backgroundTab === 'wallpaper' && (
+                  <div>
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(6, 32px)',
+                      gap: '12px',
+                      marginBottom: '12px',
+                    }}>
+                      {WALLPAPER_IMAGES.map((img, idx) => (
+                        <img
+                          key={img}
+                          src={img}
+                          alt={`Wallpaper ${idx + 1}`}
+                          style={{
+                            width: 32,
+                            height: 32,
+                            objectFit: 'cover',
+                            borderRadius: 6,
+                            border: backgroundImage === img ? '2px solid #a855f7' : '2px solid transparent',
+                            cursor: 'pointer',
+                            boxShadow: backgroundImage === img ? '0 0 0 2px #a855f7' : undefined,
+                            transition: 'border 0.2s, box-shadow 0.2s',
+                          }}
+                          onClick={() => {
+                            setBackgroundImage(img);
+                            setBackgroundType('wallpaper');
+                          }}
+                        />
+                      ))}
+                    </div>
+                    <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, marginBottom: 8 }}>
+                      Background gradients were created by <a href="https://raycast.com" target="_blank" rel="noopener noreferrer" style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'underline' }}>raycast.com</a>
+                    </div>
+                  </div>
+                )}
+                {/* Gradient Tab */}
+                {backgroundTab === 'gradient' && (
+                  <div>
+                    <label className="text-white text-sm block mb-2">Gradient</label>
+                    <input
+                      type="text"
+                      value={backgroundGradient}
+                      onChange={e => setBackgroundGradient(e.target.value)}
+                      className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm"
+                    />
+                  </div>
+                )}
+                {/* Color Tab */}
+                {backgroundTab === 'color' && (
+                  <div>
+                    <label className="text-white text-sm block mb-2">Color</label>
+                    <input
+                      type="color"
+                      value={backgroundColor}
+                      onChange={e => setBackgroundColor(e.target.value)}
+                      className="w-full h-8"
+                    />
+                  </div>
+                )}
+                {/* Image Tab */}
+                {backgroundTab === 'image' && (
+                  <div>
+                    <label className="text-white text-sm block mb-2">Image</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={e => {
+                        const file = e.target.files[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = e => setBackgroundImage(e.target.result);
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                      className="w-full text-white text-sm"
+                    />
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="text-white text-sm block mb-2">Opacity</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.1"
+                  value={backgroundOpacity}
+                  onChange={e => setBackgroundOpacity(parseFloat(e.target.value))}
+                  className="w-full"
+                />
+              </div>
+              <div>
+                <label className="text-white text-sm block mb-2">Blur</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="20"
+                  step="1"
+                  value={backgroundBlur}
+                  onChange={e => setBackgroundBlur(parseInt(e.target.value))}
+                  className="w-full"
+                />
+              </div>
+              <div>
+                <label className="text-white text-sm block mb-2">Padding</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="128"
+                  step="4"
+                  value={padding}
+                  onChange={e => setPadding(parseInt(e.target.value))}
+                  className="w-full"
+                />
+              </div>
+            </div>
+          </div>
+          {/* Bottom: Playback Controls Bar */}
+          <div className="h-20 bg-black/90 border-t border-white/10 flex items-center justify-center px-8">
+            {selectedRecording && (
+              <div className="w-full max-w-3xl flex items-center gap-6">
+                {/* Play/Pause Button */}
+                <button
+                  onClick={handlePlayPause}
+                  className="text-white hover:text-blue-400 transition-colors"
+                  title="Play/Pause"
+                >
+                  {isPlaying ? (
+                    <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  )}
+                </button>
+                {/* Time Display */}
+                <div className="text-white text-sm w-20 text-right">
+                  {formatTime(currentTime)} / {formatTime(duration)}
+                </div>
+                {/* Progress Bar */}
+                <div
+                  className="flex-1 h-2 bg-white/20 rounded-full cursor-pointer relative"
+                  onClick={handleSeek}
+                >
+                  <div
+                    className="h-full bg-blue-500 rounded-full absolute top-0 left-0"
+                    style={{ width: `${(currentTime / duration) * 100}%` }}
+                  />
+                </div>
+                {/* Volume Control */}
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={toggleMute}
+                    className="text-white hover:text-blue-400 transition-colors"
+                    title="Mute/Unmute"
+                  >
+                    {isMuted ? (
+                      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                      </svg>
+                    ) : (
+                      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                      </svg>
+                    )}
+                  </button>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    value={volume}
+                    onChange={handleVolumeChange}
+                    className="w-24"
+                    title="Volume"
+                  />
+                </div>
+                {/* Fullscreen Button */}
+                <button
+                  onClick={toggleFullscreen}
+                  className="text-white hover:text-blue-400 transition-colors"
+                  title="Fullscreen"
+                >
+                  {isFullscreen ? (
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 9V4.5M9 9H4.5M15 9h4.5M15 9v-4.5M9 15v4.5M9 15H4.5M15 15h4.5M15 15v4.5" />
+                    </svg>
+                  ) : (
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 };

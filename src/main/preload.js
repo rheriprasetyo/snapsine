@@ -30,7 +30,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onPauseRecordingShortcut: (callback) => ipcRenderer.on('pause-recording-shortcut', callback),
   
   // Remove listeners
-  removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel)
+  removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel),
+  
+  // New API
+  getBackgroundImages: () => ipcRenderer.invoke('get-background-images')
 });
 
 // Expose version info

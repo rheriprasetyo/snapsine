@@ -122,57 +122,56 @@ const SourceSelector = ({ selectedSource, onSourceSelect }) => {
               whileTap={{ scale: 0.98 }}
             >
               <div className="flex items-center gap-3" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                {source.thumbnail ? (
-                  <img
-                    src={source.thumbnail.toDataURL()}
-                    alt={source.name}
-                    className="w-12 h-8 object-cover rounded bg-white/10"
-                    style={{
-                      width: '48px',
-                      height: '32px',
-                      objectFit: 'cover',
-                      borderRadius: '4px',
-                      backgroundColor: 'rgba(255, 255, 255, 0.1)'
-                    }}
-                  />
-                ) : (
-                  <div className="w-12 h-8 bg-white/10 rounded flex items-center justify-center" style={{
-                    width: '48px',
-                    height: '32px',
-                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                    borderRadius: '4px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}>
-                    <span style={{ fontSize: '16px' }}>
-                      {source.name.toLowerCase().includes('screen') ? '🖥️' : '🪟'}
-                    </span>
-                  </div>
-                )}
+                <div className="w-12 h-8 bg-white/10 rounded flex items-center justify-center" style={{
+                  width: '48px',
+                  height: '32px',
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  borderRadius: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <span style={{ fontSize: '16px' }}>
+                    {source.name.toLowerCase().includes('screen') ? '🖥️' : '🪟'}
+                  </span>
+                </div>
 
                 <div className="flex-1 min-w-0" style={{ flex: 1, minWidth: 0 }}>
-                  <div className="font-medium truncate" style={{ fontWeight: '500', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div className="font-medium" style={{ 
+                    fontWeight: '500', 
+                    overflow: 'hidden',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    fontSize: '14px',
+                    lineHeight: '1.2',
+                    maxHeight: '2.4em'
+                  }}>
                     {source.name}
                   </div>
-                  <div className="text-xs opacity-60 truncate" style={{
+                  <div className="text-xs opacity-60 mt-0.5" style={{
                     fontSize: '12px',
                     opacity: 0.6,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap'
+                    marginTop: '2px'
                   }}>
                     {source.name.toLowerCase().includes('screen') ? 'Full Screen' : 'Application Window'}
                   </div>
                 </div>
 
                 {selectedSource?.id === source.id && (
-                  <div className="w-2 h-2 bg-purple-400 rounded-full" style={{
-                    width: '8px',
-                    height: '8px',
-                    backgroundColor: '#c084fc',
-                    borderRadius: '50%'
-                  }} />
+                  <div className="flex-shrink-0 ml-2 self-start mt-1" style={{ 
+                    flexShrink: 0, 
+                    marginLeft: '8px',
+                    alignSelf: 'flex-start',
+                    marginTop: '4px'
+                  }}>
+                    <div className="w-2 h-2 bg-purple-400 rounded-full" style={{
+                      width: '8px',
+                      height: '8px',
+                      backgroundColor: '#c084fc',
+                      borderRadius: '50%'
+                    }} />
+                  </div>
                 )}
               </div>
             </motion.button>
