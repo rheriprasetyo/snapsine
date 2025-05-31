@@ -1,7 +1,7 @@
 import React from 'react';
 import { Undo2, Redo2, Settings, SlidersHorizontal, Download, Upload } from 'lucide-react';
 
-const TopBar = ({ onUploadVideo }) => (
+const TopBar = ({ onUploadVideo, onExport }) => (
   <header className="fixed top-0 left-0 w-full h-16 z-30 bg-gradient-to-r from-gray-900 to-gray-800 flex items-center px-6 shadow-lg border-b border-gray-800">
     <div className="flex items-center gap-3 flex-1">
       <span className="font-bold text-lg text-white tracking-wide">Snapsine</span>
@@ -25,7 +25,12 @@ const TopBar = ({ onUploadVideo }) => (
           onChange={onUploadVideo}
         />
       </label>
-      <button className="ml-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg shadow transition">Export</button>
+      <button 
+        onClick={onExport}
+        className="ml-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg shadow transition flex items-center gap-2"
+      >
+        <Download size={18} /> Export
+      </button>
     </div>
   </header>
 );

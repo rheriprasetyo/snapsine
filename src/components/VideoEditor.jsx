@@ -4,6 +4,7 @@ import ToolSidebar from './ToolSidebar';
 import PreviewCanvas from './PreviewCanvas';
 import SettingsPanel from './SettingsPanel';
 import TimelineEditor from './TimelineEditor';
+import ExportManager from './ExportManager';
 
 const VideoEditor = () => {
   const [videoFile, setVideoFile] = useState(null);
@@ -13,6 +14,7 @@ const VideoEditor = () => {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(10);
   const videoRef = useRef(null);
+  const backgroundRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [activeTool, setActiveTool] = useState('cursor');
   const [backgroundType, setBackgroundType] = useState('wallpaper');
@@ -21,6 +23,13 @@ const VideoEditor = () => {
   const [backgroundImage, setBackgroundImage] = useState(null);
   const [backgroundBlur, setBackgroundBlur] = useState(0);
   const [padding, setPadding] = useState(0);
+  const [exportSettings, setExportSettings] = useState({
+    width: 1920,
+    height: 1080,
+    scale: 0.8,
+    padding: 0,
+    quality: 'high'
+  });
 
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
@@ -101,6 +110,7 @@ const VideoEditor = () => {
               <PreviewCanvas
                 videoFile={videoFile}
                 videoRef={videoRef}
+                backgroundRef={backgroundRef}
                 onTimeUpdate={handleTimeUpdate}
                 onLoadedMetadata={handleLoadedMetadata}
                 isPlaying={isPlaying}
@@ -111,6 +121,14 @@ const VideoEditor = () => {
                 backgroundBlur={backgroundBlur}
                 padding={padding}
               />
+              {/* Tombol ExportManager di bawah preview */}
+              <div className="mt-6">
+                <ExportManager
+                  videoRef={videoRef}
+                  backgroundRef={backgroundRef}
+                  settings={exportSettings}
+                />
+              </div>
               {/* Playback controls and upload button row */}
               <div className="flex justify-center items-center gap-6 mt-6 mb-2">
                 <button onClick={handleBackward} className="p-2 rounded-full bg-gray-800 hover:bg-gray-700 text-white">
