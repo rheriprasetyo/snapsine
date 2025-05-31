@@ -1,404 +1,101 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 
-const SettingsPanel = () => {
-  const [settings, setSettings] = useState({
-    videoQuality: '1080p',
-    frameRate: '60',
-    audioQuality: 'high',
-    outputFormat: 'mp4',
-    includeAudio: true,
-    includeMicrophone: false,
-    webcamEnabled: false,
-    clickHighlights: true,
-    autoZoom: false,
-    outputPath: 'Desktop/Recordings'
-  });
+const tabs = [
+  { id: 'wallpaper', label: 'Wallpaper' },
+  { id: 'gradient', label: 'Gradient' },
+  { id: 'color', label: 'Color' },
+  { id: 'image', label: 'Image' },
+];
 
-  const updateSetting = (key, value) => {
-    setSettings(prev => ({ ...prev, [key]: value }));
-  };
+const wallpapers = [
+  '/backgrounds/wallpapers/wallpaper1.png',
+  '/backgrounds/wallpapers/wallpaper2.png',
+  '/backgrounds/wallpapers/wallpaper3.png',
+  '/backgrounds/wallpapers/wallpaper4.png',
 
-  const toggleSetting = (key) => {
-    setSettings(prev => ({ ...prev, [key]: !prev[key] }));
+  // dst, sesuai file yang ada
+];
+
+const SettingsPanel = ({ activeTool, backgroundType, setBackgroundType, backgroundColor, setBackgroundColor, backgroundGradient, setBackgroundGradient, backgroundImage, setBackgroundImage, backgroundBlur, setBackgroundBlur, padding, setPadding }) => {
+  const [activeTab, setActiveTab] = useState(backgroundType);
+
+  // Sync tab with backgroundType
+  React.useEffect(() => {
+    setActiveTab(backgroundType);
+  }, [backgroundType]);
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    setBackgroundType(tab);
   };
 
   return (
-    <div className="p-4 space-y-6" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <h2 className="text-white text-lg font-semibold" style={{ color: 'white', fontSize: '18px', fontWeight: '600' }}>
-        Settings
-      </h2>
-
-      {/* Video Settings */}
-      {/* <div className="space-y-4" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        <h3 className="text-white text-sm font-medium border-b border-white/10 pb-2" style={{
-          color: 'white',
-          fontSize: '14px',
-          fontWeight: '500',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-          paddingBottom: '8px'
-        }}>
-          📹 Video Settings
-        </h3>
-
-        <div className="space-y-3" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+    <aside className="w-96 h-full bg-black/80 border-l border-gray-800 p-6 flex flex-col z-20">
+      <div className="mb-4 text-xs text-purple-400 font-semibold uppercase tracking-wider">Active Tool: {activeTool}</div>
+      <div className="flex gap-2 mb-4">
+        {tabs.map(tab => (
+          <button
+            key={tab.id}
+            className={`px-3 py-1 rounded-md text-sm font-medium ${activeTab === tab.id ? 'bg-purple-700 text-white' : 'bg-white/10 text-white/60 hover:bg-white/20'}`}
+            onClick={() => handleTabChange(tab.id)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+      <div className="flex-1 overflow-y-auto">
+        {activeTab === 'wallpaper' && (
           <div>
-            <label className="text-white/80 text-sm block mb-2" style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: '14px', display: 'block', marginBottom: '8px' }}>
-              Quality
-            </label>
-            <select 
-              value={settings.videoQuality}
-              onChange={(e) => updateSetting('videoQuality', e.target.value)}
-              className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white"
-              style={{
-                width: '100%',
-                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                borderRadius: '8px',
-                padding: '8px 12px',
-                color: 'white'
-              }}
-            >
-              <option value="720p">720p HD</option>
-              <option value="1080p">1080p Full HD</option>
-              <option value="1440p">1440p 2K</option>
-              <option value="2160p">2160p 4K</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="text-white/80 text-sm block mb-2" style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: '14px', display: 'block', marginBottom: '8px' }}>
-              Frame Rate
-            </label>
-            <select 
-              value={settings.frameRate}
-              onChange={(e) => updateSetting('frameRate', e.target.value)}
-              className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white"
-              style={{
-                width: '100%',
-                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                borderRadius: '8px',
-                padding: '8px 12px',
-                color: 'white'
-              }}
-            >
-              <option value="30">30 FPS</option>
-              <option value="60">60 FPS</option>
-              <option value="120">120 FPS</option>
-            </select>
-          </div>
-        </div>
-      </div> */}
-
-      {/* Audio Settings */}
-      
-      {/* <div className="space-y-4" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        <h3 className="text-white text-sm font-medium border-b border-white/10 pb-2" style={{
-          color: 'white',
-          fontSize: '14px',
-          fontWeight: '500',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-          paddingBottom: '8px'
-        }}>
-          🔊 Audio Settings
-        </h3>
-
-        <div className="space-y-3" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <div className="flex items-center justify-between" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span className="text-white/80 text-sm" style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: '14px' }}>
-              System Audio
-            </span>
-            <motion.button
-              onClick={() => toggleSetting('includeAudio')}
-              className={`relative w-10 h-6 rounded-full ${settings.includeAudio ? 'bg-green-600' : 'bg-gray-600'}`}
-              style={{
-                position: 'relative',
-                width: '40px',
-                height: '24px',
-                borderRadius: '12px',
-                backgroundColor: settings.includeAudio ? '#16a34a' : '#4b5563',
-                border: 'none',
-                cursor: 'pointer'
-              }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <motion.div
-                className="absolute top-1 w-4 h-4 bg-white rounded-full"
-                style={{
-                  position: 'absolute',
-                  top: '4px',
-                  width: '16px',
-                  height: '16px',
-                  backgroundColor: 'white',
-                  borderRadius: '50%'
-                }}
-                animate={{
-                  x: settings.includeAudio ? 20 : 4
-                }}
-                transition={{ type: "spring", stiffness: 500, damping: 30 }}
-              />
-            </motion.button>
-          </div>
-
-          <div className="flex items-center justify-between" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span className="text-white/80 text-sm" style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: '14px' }}>
-              Microphone
-            </span>
-            <motion.button
-              onClick={() => toggleSetting('includeMicrophone')}
-              className={`relative w-10 h-6 rounded-full ${settings.includeMicrophone ? 'bg-green-600' : 'bg-gray-600'}`}
-              style={{
-                position: 'relative',
-                width: '40px',
-                height: '24px',
-                borderRadius: '12px',
-                backgroundColor: settings.includeMicrophone ? '#16a34a' : '#4b5563',
-                border: 'none',
-                cursor: 'pointer'
-              }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <motion.div
-                className="absolute top-1 w-4 h-4 bg-white rounded-full"
-                style={{
-                  position: 'absolute',
-                  top: '4px',
-                  width: '16px',
-                  height: '16px',
-                  backgroundColor: 'white',
-                  borderRadius: '50%'
-                }}
-                animate={{
-                  x: settings.includeMicrophone ? 20 : 4
-                }}
-                transition={{ type: "spring", stiffness: 500, damping: 30 }}
-              />
-            </motion.button>
-          </div>
-        </div>
-      </div> */}
-
-      {/* Effects Settings */}
-      {/* <div className="space-y-4" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        <h3 className="text-white text-sm font-medium border-b border-white/10 pb-2" style={{
-          color: 'white',
-          fontSize: '14px',
-          fontWeight: '500',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-          paddingBottom: '8px'
-        }}>
-          ✨ Effects
-        </h3>
-
-        <div className="space-y-3" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <div className="flex items-center justify-between" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span className="text-white/80 text-sm" style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: '14px' }}>
-              Click Highlights
-            </span>
-            <motion.button
-              onClick={() => toggleSetting('clickHighlights')}
-              className={`relative w-10 h-6 rounded-full ${settings.clickHighlights ? 'bg-purple-600' : 'bg-gray-600'}`}
-              style={{
-                position: 'relative',
-                width: '40px',
-                height: '24px',
-                borderRadius: '12px',
-                backgroundColor: settings.clickHighlights ? '#9333ea' : '#4b5563',
-                border: 'none',
-                cursor: 'pointer'
-              }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <motion.div
-                className="absolute top-1 w-4 h-4 bg-white rounded-full"
-                style={{
-                  position: 'absolute',
-                  top: '4px',
-                  width: '16px',
-                  height: '16px',
-                  backgroundColor: 'white',
-                  borderRadius: '50%'
-                }}
-                animate={{
-                  x: settings.clickHighlights ? 20 : 4
-                }}
-                transition={{ type: "spring", stiffness: 500, damping: 30 }}
-              />
-            </motion.button>
-          </div>
-
-          <div className="flex items-center justify-between" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span className="text-white/80 text-sm" style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: '14px' }}>
-              Webcam Overlay
-            </span>
-            <motion.button
-              onClick={() => toggleSetting('webcamEnabled')}
-              className={`relative w-10 h-6 rounded-full ${settings.webcamEnabled ? 'bg-blue-600' : 'bg-gray-600'}`}
-              style={{
-                position: 'relative',
-                width: '40px',
-                height: '24px',
-                borderRadius: '12px',
-                backgroundColor: settings.webcamEnabled ? '#2563eb' : '#4b5563',
-                border: 'none',
-                cursor: 'pointer'
-              }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <motion.div
-                className="absolute top-1 w-4 h-4 bg-white rounded-full"
-                style={{
-                  position: 'absolute',
-                  top: '4px',
-                  width: '16px',
-                  height: '16px',
-                  backgroundColor: 'white',
-                  borderRadius: '50%'
-                }}
-                animate={{
-                  x: settings.webcamEnabled ? 20 : 4
-                }}
-                transition={{ type: "spring", stiffness: 500, damping: 30 }}
-              />
-            </motion.button>
-          </div>
-
-          <div className="flex items-center justify-between" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span className="text-white/80 text-sm" style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: '14px' }}>
-              Auto Zoom
-            </span>
-            <motion.button
-              onClick={() => toggleSetting('autoZoom')}
-              className={`relative w-10 h-6 rounded-full ${settings.autoZoom ? 'bg-orange-600' : 'bg-gray-600'}`}
-              style={{
-                position: 'relative',
-                width: '40px',
-                height: '24px',
-                borderRadius: '12px',
-                backgroundColor: settings.autoZoom ? '#ea580c' : '#4b5563',
-                border: 'none',
-                cursor: 'pointer'
-              }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <motion.div
-                className="absolute top-1 w-4 h-4 bg-white rounded-full"
-                style={{
-                  position: 'absolute',
-                  top: '4px',
-                  width: '16px',
-                  height: '16px',
-                  backgroundColor: 'white',
-                  borderRadius: '50%'
-                }}
-                animate={{
-                  x: settings.autoZoom ? 20 : 4
-                }}
-                transition={{ type: "spring", stiffness: 500, damping: 30 }}
-              />
-            </motion.button>
-          </div>
-        </div>
-      </div> */}
-
-      {/* Output Settings */}
-      {/* <div className="space-y-4" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        <h3 className="text-white text-sm font-medium border-b border-white/10 pb-2" style={{
-          color: 'white',
-          fontSize: '14px',
-          fontWeight: '500',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-          paddingBottom: '8px'
-        }}>
-          💾 Output
-        </h3>
-
-        <div className="space-y-3" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <div>
-            <label className="text-white/80 text-sm block mb-2" style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: '14px', display: 'block', marginBottom: '8px' }}>
-              Format
-            </label>
-            <select 
-              value={settings.outputFormat}
-              onChange={(e) => updateSetting('outputFormat', e.target.value)}
-              className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white"
-              style={{
-                width: '100%',
-                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                borderRadius: '8px',
-                padding: '8px 12px',
-                color: 'white'
-              }}
-            >
-              <option value="mp4">MP4</option>
-              <option value="mov">MOV</option>
-              <option value="avi">AVI</option>
-              <option value="webm">WebM</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="text-white/80 text-sm block mb-2" style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: '14px', display: 'block', marginBottom: '8px' }}>
-              Save Location
-            </label>
-            <div className="flex gap-2" style={{ display: 'flex', gap: '8px' }}>
-              <input 
-                type="text"
-                value={settings.outputPath}
-                onChange={(e) => updateSetting('outputPath', e.target.value)}
-                className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white"
-                style={{
-                  flex: 1,
-                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                  borderRadius: '8px',
-                  padding: '8px 12px',
-                  color: 'white'
-                }}
-              />
-              <button 
-                className="px-3 py-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-600/30 rounded-lg"
-                style={{
-                  padding: '8px 12px',
-                  backgroundColor: 'rgba(168, 85, 247, 0.2)',
-                  color: '#c084fc',
-                  border: '1px solid rgba(168, 85, 247, 0.3)',
-                  borderRadius: '8px',
-                  cursor: 'pointer'
-                }}
-              >
-                📁
-              </button>
+            <div className="grid grid-cols-4 gap-3 mb-4">
+              {wallpapers.map((img, idx) => (
+                <img
+                  key={img}
+                  src={img}
+                  alt={`Wallpaper ${idx + 1}`}
+                  className={`w-16 h-12 object-cover rounded-lg border-2 cursor-pointer ${backgroundImage === img ? 'border-purple-500' : 'border-transparent hover:border-purple-500'}`}
+                  onClick={() => { setBackgroundImage(img); setBackgroundType('wallpaper'); }}
+                />
+              ))}
+            </div>
+            <div className="text-xs text-gray-400 mb-4">Background gradients were created by <a href="https://raycast.com" target="_blank" rel="noopener noreferrer" className="underline">raycast.com</a></div>
+            <div className="mb-4">
+              <label className="block text-gray-300 text-xs mb-1">Background blur</label>
+              <input type="range" min="0" max="20" step="1" className="w-full" value={backgroundBlur} onChange={e => setBackgroundBlur(Number(e.target.value))} />
+            </div>
+            <div className="mb-4">
+              <label className="block text-gray-300 text-xs mb-1">Padding</label>
+              <input type="range" min="0" max="128" step="4" className="w-full" value={padding} onChange={e => setPadding(Number(e.target.value))} />
             </div>
           </div>
-        </div>
-      </div> */}
-
-      {/* Save Button */}
-      <motion.button
-        className="w-full px-4 py-3 bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-600/30 rounded-lg font-medium"
-        style={{
-          width: '100%',
-          padding: '12px 16px',
-          backgroundColor: 'rgba(168, 85, 247, 0.2)',
-          color: '#c084fc',
-          border: '1px solid rgba(168, 85, 247, 0.3)',
-          borderRadius: '8px',
-          fontWeight: '500',
-          cursor: 'pointer'
-        }}
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-        onClick={() => {
-          console.log('Settings saved:', settings);
-          alert('Settings saved!');
-        }}
-      >
-        💾 Save Settings
-      </motion.button>
-    </div>
+        )}
+        {activeTab === 'gradient' && (
+          <div className="mb-4">
+            <label className="block text-gray-300 text-xs mb-1">Gradient</label>
+            <input type="text" className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" placeholder="linear-gradient(...)" value={backgroundGradient} onChange={e => setBackgroundGradient(e.target.value)} />
+          </div>
+        )}
+        {activeTab === 'color' && (
+          <div className="mb-4">
+            <label className="block text-gray-300 text-xs mb-1">Color</label>
+            <input type="color" className="w-full h-8" value={backgroundColor} onChange={e => setBackgroundColor(e.target.value)} />
+          </div>
+        )}
+        {activeTab === 'image' && (
+          <div className="mb-4">
+            <label className="block text-gray-300 text-xs mb-1">Image</label>
+            <input type="file" accept="image/*" className="w-full text-white text-sm" onChange={e => {
+              const file = e.target.files[0];
+              if (file) {
+                const reader = new FileReader();
+                reader.onload = ev => { setBackgroundImage(ev.target.result); setBackgroundType('image'); };
+                reader.readAsDataURL(file);
+              }
+            }} />
+          </div>
+        )}
+      </div>
+    </aside>
   );
 };
 

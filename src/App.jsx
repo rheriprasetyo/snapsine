@@ -7,6 +7,7 @@ import SourceSelector from './components/SourceSelector';
 import RecordingsPanel from './components/RecordingsPanel';
 import PreviewArea from './components/PreviewArea';
 import VideoPlayer from './components/VideoPlayer';
+import VideoEditor from './components/VideoEditor';
 
 // Inner App component that has access to RecordingContext
 const AppContent = () => {
@@ -208,7 +209,8 @@ const AppContent = () => {
 
   const tabs = [
     { id: 'record', label: 'Record', icon: '🎥' },
-    { id: 'library', label: 'Library', icon: '📚' }
+    { id: 'library', label: 'Library', icon: '📚' },
+    { id: 'video-editor', label: 'Video Editor', icon: '🎞' }
   ];
 
   return (
@@ -261,6 +263,8 @@ const AppContent = () => {
             {/* Add quick settings here if needed */}
           </div>
         </div>
+      ) : activeTab === 'video-editor' ? (
+        <VideoEditor />
       ) : (
         // Library tab (existing new layout)
         <>
